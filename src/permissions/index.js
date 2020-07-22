@@ -1,0 +1,8 @@
+const CREATE_WORK_ITEM = 'CREATE_WORK_ITEM'
+const UPDATE_WORK_ITEM = 'UPDATE_WORK_ITEM'
+
+
+export default {
+    CREATE_WORK_ITEM,
+    UPDATE_WORK_ITEM,
+};

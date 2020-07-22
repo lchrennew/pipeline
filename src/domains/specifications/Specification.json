@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "stages": [
+    {
+      "name": "Stage1",
+      "type": "noop"
+    }
+  ]
+}

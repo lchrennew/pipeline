@@ -1,0 +1,8 @@
+export const EXECUTION_STARTED = 'execution-started'
+export const EXECUTION_ABORTED = 'execution-aborted'
+export const EXECUTION_PAUSED = 'execution-paused'
+export const EXECUTION_RESUMED = 'execution-resumed'
+export const EXECUTION_CONFIRMED = 'execution-confirmed'
+export const STAGE_STARTED = 'stage-started'
+export const STAGE_SUCCEEDED = 'stage-succeeded'
+export const STAGE_FAILED = 'stage-failed'

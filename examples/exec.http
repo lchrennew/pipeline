@@ -1,0 +1,10 @@
+POST http://localhost:4242/admin-api/pipe/exec
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+< ./exec.json
+
+<> 2020-07-21T055556.201.txt
+
+###

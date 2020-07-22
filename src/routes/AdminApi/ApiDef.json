@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "links": {
+    "pipeline-executions": {
+      "uri": "/api/admin/exec"
+    },
+    "events": {
+      "uri": "/api/admin/events"
+    },
+    "state": {
+      "uri": "/api/admin/state"
+    }
+  }
+}
