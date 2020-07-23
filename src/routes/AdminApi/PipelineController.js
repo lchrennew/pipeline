@@ -19,7 +19,8 @@ export default class PipelineController extends Controller {
 
         this.post('/exec', this.execute)
         this.post('/exec/:id/confirm', [this.requireExecution, this.confirm])
-        // this.post('/exec/:id/abort')
+        this.post('/exec/:id/abort', [this.requireExecution, this.abort])
+        this.post('/exec/:id/pause', [this.requireExecution, this.pause])
         // this.post('/exec/:id/pause')
         // this.post('/exec/:id/resume/:stage')
     }

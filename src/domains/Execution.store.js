@@ -5,7 +5,10 @@ import Execution from './Execution';
 import { Progress } from './Execution.compositions';
 import ExecutionDb from './Execution.db';
 import {
+    EXECUTION_ABORTED,
     EXECUTION_CONFIRMED,
+    EXECUTION_PAUSED,
+    EXECUTION_RESUMED,
     EXECUTION_STARTED,
     STAGE_FAILED,
     STAGE_STARTED,
@@ -14,7 +17,10 @@ import {
 
 
 export default class ExecutionStore {
-    constructor(executionDb: ExecutionDb, eventStore: EventStore, eventBus, getLogger) {
+    constructor(executionDb: ExecutionDb,
+                eventStore: EventStore,
+                eventBus: EventEmitter,
+                getLogger) {
         this.logger = getLogger('Execution.store.js')
         this.executionDb = executionDb
         this.eventStore = eventStore
@@ -26,6 +32,9 @@ export default class ExecutionStore {
         this.eventStore.on(STAGE_FAILED, async event => this.#stageFailed(event.data))
 
         this.eventStore.on(EXECUTION_CONFIRMED, async event => await this.#confirm(event.execution))
+        this.eventStore.on(EXECUTION_ABORTED, async event => await this.#abort(event.execution))
+        this.eventStore.on(EXECUTION_PAUSED, async event => await this.#pause(event.execution))
+        this.eventStore.on(EXECUTION_RESUMED, async event => await this.#resume(event.execution))
     }
 
     executionDb: ExecutionDb
@@ -79,7 +88,8 @@ export default class ExecutionStore {
         }
     }
 
-    /** 启动阶段执行并触发相应结果事件
+    /**
+     * 启动阶段执行并触发相应结果事件
      * @param execution {ObjectId}
      * @param name {String} 阶段名称
      * @param input {Object}
@@ -94,7 +104,7 @@ export default class ExecutionStore {
                             options,
                             type
                         }, creator) {
-        let err = await this.#executeStage(type, options, input)
+        let err = await this.#executeCommand(type, options, input)
         await this.eventStore.store({
             type: err ? STAGE_FAILED : STAGE_SUCCEEDED,
             creator,
@@ -102,12 +112,13 @@ export default class ExecutionStore {
         })
     }
 
-    /** 实际执行
+    /**
+     * 实际执行
      * @param type {String}
      * @param options {Object}
      * @param input {Object}
      * */
-    async #executeStage(type, options, input) {
+    async #executeCommand(type, options, input) {
         try {
             this.logger.info(`准备执行命令：${options.shell}`)
             const { stdout } = await execa(type, ['-c', options.shell], { env: input })
@@ -119,6 +130,7 @@ export default class ExecutionStore {
     }
 
     /**
+     * 当阶段成功时，更新执行状态并进入后续处理（比如等待所有正在执行的阶段完成后更新执行状态）
      * @param execution {ObjectId}
      * @param stage {String}
      * */
@@ -128,6 +140,7 @@ export default class ExecutionStore {
     }
 
     /**
+     * 当阶段执行失败时，更新执行状态并进入后续处理（比如等待所有正在执行的阶段完成后更新执行状态）
      * @param execution {ObjectId}
      * @param stage {String}
      * @param err {Object}
@@ -148,5 +161,33 @@ export default class ExecutionStore {
     get(executionId) {
         const _id = ObjectId(executionId)
         return this.executionDb.get(_id);
+    }
+
+    async #abort(execution) {
+        const status = {
+            [Execution.status.RUNNING]: true,
+            [Execution.status.PAUSING]: true,
+            [Execution.status.PAUSED]: true,
+            [Execution.status.PENDING]: true,
+        }
+        if (status[execution?.status]) {
+            execution.status = Execution.status.ABORTING
+            await this.executionDb.update(execution)
+        }
+    }
+
+    async #pause(execution) {
+        if (execution.status === Execution.status.RUNNING) {
+            execution.status = Execution.status.PAUSING
+            await this.executionDb.update(execution)
+        }
+    }
+
+    async #resume(execution: Execution) {
+        if (execution.status === Execution.status.PAUSED) {
+            execution.status = Execution.status.RUNNING
+            await this.executionDb.update(execution)
+            await this.#next(execution._id)
+        }
     }
 }
