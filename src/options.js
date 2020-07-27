@@ -32,6 +32,7 @@ function defaultOptions() {
         getLogger: defaultLogProvider,
         disableDBMigration: false,
         start: true,
+        queueServerUri: process.env.QUEUE_SERVER_URI
     };
 }
 

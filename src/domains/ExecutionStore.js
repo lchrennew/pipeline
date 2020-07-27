@@ -1,33 +1,43 @@
 import execa from 'execa'
 import { ObjectId } from 'mongodb'
+import { getApi, json, POST } from '../utils/fetch';
 import EventStore from './Event.store';
 import Execution from './Execution';
 import { Progress } from './Execution.compositions';
-import ExecutionDb from './Execution.db';
 import {
     EXECUTION_ABORTED,
     EXECUTION_CONFIRMED,
     EXECUTION_PAUSED,
     EXECUTION_RESUMED,
     EXECUTION_STARTED,
+    EXECUTION_TICKED,
     STAGE_FAILED,
+    STAGE_PREPARED,
     STAGE_STARTED,
     STAGE_SUCCEEDED
 } from './Execution.events';
+import ExecutionDb from './ExecutionDb';
 
 
 export default class ExecutionStore {
     constructor(executionDb: ExecutionDb,
                 eventStore: EventStore,
                 eventBus: EventEmitter,
+                queueServerUri: String,
+                callbackUri: String,
                 getLogger) {
-        this.logger = getLogger('Execution.store.js')
+        this.logger = getLogger('ExecutionStore.js')
         this.executionDb = executionDb
         this.eventStore = eventStore
         this.eventBus = eventBus
+        this.queueApi = getApi(queueServerUri)
+        this.queueServerUri = queueServerUri
+        this.callbackUri = callbackUri
 
         this.eventStore.on(EXECUTION_STARTED, async event => await this.#start(event))
-        this.eventStore.on(STAGE_STARTED, async event => this.#stageStarted(event.data, event.creator))
+        this.eventStore.on(STAGE_STARTED, async event => this.#stageStarted(event.data))
+        this.eventStore.on(STAGE_PREPARED, async event => this.#stagePrepared(event.data.name, event.execution))
+
         this.eventStore.on(STAGE_SUCCEEDED, async event => this.#stageSucceeded(event.data))
         this.eventStore.on(STAGE_FAILED, async event => this.#stageFailed(event.data))
 
@@ -35,12 +45,16 @@ export default class ExecutionStore {
         this.eventStore.on(EXECUTION_ABORTED, async event => await this.#abort(event.execution))
         this.eventStore.on(EXECUTION_PAUSED, async event => await this.#pause(event.execution))
         this.eventStore.on(EXECUTION_RESUMED, async event => await this.#resume(event.execution))
+
+        this.eventStore.on(EXECUTION_TICKED, async event => await this.#next(event.data))
     }
 
     executionDb: ExecutionDb
     eventStore: EventStore
     eventBus: EventEmitter
     logger
+    queueServerUri: String
+    callbackUri: String
 
 
     /**
@@ -48,9 +62,10 @@ export default class ExecutionStore {
      * @param _id {ObjectId}
      * @param creator {String}
      * @param stages {[]}
+     * @param origin
      * */
     async #start({ _id, creator, data: stages }) {
-        const execution = new Execution({ _id, stages, creator })
+        const execution = new Execution({ _id, stages, creator, variables: {} })
         await this.executionDb.insert(execution)
         await this.#next(execution._id)
     }
@@ -93,41 +108,45 @@ export default class ExecutionStore {
      * @param execution {ObjectId}
      * @param name {String} 阶段名称
      * @param input {Object}
-     * @param options {Object}
      * @param type {String}
-     * @param creator {String}
      * */
     async #stageStarted({
                             execution,
                             name,
-                            input,
-                            options,
                             type
-                        }, creator) {
-        let err = await this.#executeCommand(type, options, input)
-        await this.eventStore.store({
-            type: err ? STAGE_FAILED : STAGE_SUCCEEDED,
-            creator,
-            data: { execution, stage: name, err }
-        })
+                        }) {
+
+        await this.#createStageEnvironment(execution, name, type)
+        // let err = await this.#executeCommand(type, options, input)
+        // await this.eventStore.store({
+        //     type: err ? STAGE_FAILED : STAGE_SUCCEEDED,
+        //     creator,
+        //     data: { execution, stage: name, err }
+        // })
     }
 
-    /**
-     * 实际执行
-     * @param type {String}
-     * @param options {Object}
-     * @param input {Object}
-     * */
-    async #executeCommand(type, options, input) {
-        try {
-            this.logger.info(`准备执行命令：${options.shell}`)
-            const { stdout } = await execa(type, ['-c', options.shell], { env: input })
-            this.logger.info(`命令输出：${stdout}`)
-        } catch ({ command, exitCode, signal, signalDescription, stderr, failed, timedOut, isCanceled, killed }) {
-            this.logger.info(stderr)
-            return { command, exitCode, signal, signalDescription, stderr, failed, timedOut, isCanceled, killed }
-        }
+    async #stagePrepared(name, execution: Execution) {
+        const { input, options } = execution.stagePrepare(name)
+        await this.executionDb.update(execution)
+        await this.queueApi(`publish/${execution._id}_${name}`, POST, json({ input, options }))
     }
+
+    // /**
+    //  * 实际执行
+    //  * @param type {String}
+    //  * @param options {Object}
+    //  * @param input {Object}
+    //  * */
+    // async #executeCommand(type, options, input) {
+    //     try {
+    //         this.logger.info(`准备执行命令：${options.shell}`)
+    //         const { stdout } = await execa(type, ['-c', options.shell], { env: input })
+    //         this.logger.info(`命令输出：${stdout}`)
+    //     } catch ({ command, exitCode, signal, signalDescription, stderr, failed, timedOut, isCanceled, killed }) {
+    //         this.logger.info(stderr)
+    //         return { command, exitCode, signal, signalDescription, stderr, failed, timedOut, isCanceled, killed }
+    //     }
+    // }
 
     /**
      * 当阶段成功时，更新执行状态并进入后续处理（比如等待所有正在执行的阶段完成后更新执行状态）
@@ -190,4 +209,26 @@ export default class ExecutionStore {
             await this.#next(execution._id)
         }
     }
+
+    async #createStageEnvironment(executionId, stageName, type) {
+        try {
+            const imageName = `stage/${type}`
+            const env = {
+                EXECUTION: executionId,
+                STAGE: stageName,
+                CALLBACK: this.callbackUri,
+                QUEUE: this.queueServerUri,
+            }
+            const args = ['run', '-i', '--name', `${executionId}_${stageName}`]
+            Object.keys(env).forEach(name => args.push('--env', `${name}=${env[name]}`))
+            args.push(imageName)
+            this.logger.info(`准备执行环境：${['docker', ...args, `"${imageName}"`].join(' ')}`)
+            const { stdout } = await execa('docker', args)
+            this.logger.info(`环境ID:${stdout}`)
+        } catch ({ command, exitCode, signal, signalDescription, stderr, failed, timedOut, isCanceled, killed }) {
+            this.logger.info(stderr)
+            return { command, exitCode, signal, signalDescription, stderr, failed, timedOut, isCanceled, killed }
+        }
+    }
+
 }

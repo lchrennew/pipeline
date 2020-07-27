@@ -2,12 +2,12 @@ import cors from '@koa/cors'
 import Koa from 'koa'
 import koaBody from 'koa-body';
 import compress from 'koa-compress'
-import IndexController from './routes/index'
+import error from 'koa-error';
 import requestLogger from './middlewares/requestLogger';
 import responseTime from './middlewares/responseTime';
-import error from 'koa-error';
+import IndexController from './routes/index'
 
-export default function (config) {
+export default function (config): Koa {
     const app = new Koa()
     config.preHook?.(app)
 

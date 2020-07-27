@@ -4,7 +4,7 @@ import Execution from './Execution';
 const TABLE = 'executions'
 export default class ExecutionDb {
     constructor(getLogger) {
-        this.logger = getLogger('Execution.db.js')
+        this.logger = getLogger('ExecutionDb.js')
     }
 
     async insert(execution: Execution) {

@@ -8,6 +8,7 @@ import {
     EXECUTION_PAUSED,
     EXECUTION_RESUMED,
     EXECUTION_STARTED,
+    EXECUTION_TICKED,
     STAGE_FAILED,
     STAGE_STARTED,
     STAGE_SUCCEEDED
@@ -19,6 +20,7 @@ const executionTypes = [
     EXECUTION_CONFIRMED,
     EXECUTION_STARTED,
     EXECUTION_ABORTED,
+    EXECUTION_TICKED,
 ]
 
 const stageTypes = [
@@ -40,7 +42,7 @@ function baseTypeFor(event) {
 function groupByBaseTypeAndName(events) {
     const groups = {};
 
-    events.forEach((event) => {
+    events.forEach(event => {
         const baseType = baseTypeFor(event);
 
         groups[baseType] = groups[baseType] || {};
@@ -56,16 +58,13 @@ function groupByBaseTypeAndName(events) {
 function eachConsecutiveEvent(events, callback) {
     const groups = groupByBaseTypeAndName(events);
 
-    Object.keys(groups).forEach((baseType) => {
+    Object.keys(groups).forEach(baseType => {
         const group = groups[baseType];
 
         Object.keys(group).forEach((name) => {
             const currentEvents = group[name];
-            let left;
-            let right;
-            let i;
-            let l;
-            for (i = 0, l = currentEvents.length; i < l; i++) {
+            let left, right
+            for (let i = 0, l = currentEvents.length; i < l; i++) {
                 left = currentEvents[i];
                 right = currentEvents[i + 1];
 

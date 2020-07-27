@@ -3,7 +3,7 @@
     {
       "name": "s1",
       "preconditions": [],
-      "type": "bash",
+      "type": "base",
       "options": {
         "shell": "echo hello s1"
       },
@@ -16,11 +16,20 @@
           "stage_s1": "succeeded"
         }
       ],
-      "type": "bash",
+      "type": "base",
       "options": {
-        "shell": "echo1 hello s2"
+        "shell": "echo hello s2"
       },
       "manual": true
+    },
+    {
+      "name": "s3",
+      "preconditions": [],
+      "type": "base",
+      "options": {
+        "shell": "echo hello s3\necho hello s3-1"
+      },
+      "manual": false
     }
   ]
 }

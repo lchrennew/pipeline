@@ -4,6 +4,7 @@ export class Progress extends Stage {
     static status = {
         QUEUEING: 'queueing',
         PENDING: 'pending',
+        PREPARING: 'preparing',
         RUNNING: 'running',
         SUCCEEDED: 'succeeded',
         FAILED: 'failed',
@@ -29,16 +30,23 @@ export class Progress extends Stage {
     stoppedAt: Date
     output: Object
 
-    start(input) {
+    start() {
         this.status = Progress.status.PENDING
-        return !this.manual && this.confirm(input)
+        return !this.manual && this.confirm()
     }
 
-    confirm(input) {
+    confirm() {
         if (this.status === Progress.status.PENDING) {
+            this.status = Progress.status.PREPARING
+            this.startedAt = new Date()
+            return true
+        }
+    }
+
+    run(input) {
+        if (this.status === Progress.status.PREPARING) {
             this.status = Progress.status.RUNNING
             this.input = input
-            this.startedAt = new Date()
             return true
         }
     }

@@ -14,7 +14,7 @@ class Controller {
     router: Router;
 
     get(path, handlers, permission) {
-        const handler = handlers?.map?.(handler => handler?.bind(this)) ?? [handlers?.bind(this)]
+        const handler = handlers?.map?.(h => h?.bind(this)) ?? [handlers?.bind(this)]
         handler && this.router.get(
             path,
             checkPermission(this.config, permission),
@@ -23,7 +23,7 @@ class Controller {
     }
 
     post(path, handlers, permission) {
-        const handler = handlers?.map?.(handler => handler?.bind(this)) ?? [handlers?.bind(this)]
+        const handler = handlers?.map?.(h => h?.bind(this)) ?? [handlers?.bind(this)]
         handler && this.router.post(
             path,
             checkPermission(this.config, permission),
@@ -32,7 +32,7 @@ class Controller {
     }
 
     put(path, handlers, permission) {
-        const handler = handlers?.map?.(handler => handler?.bind(this)) ?? [handlers?.bind(this)]
+        const handler = handlers?.map?.(h => h?.bind(this)) ?? [handlers?.bind(this)]
         handler && this.router.put(
             path,
             checkPermission(this.config, permission),
@@ -41,7 +41,7 @@ class Controller {
     }
 
     delete(path, handlers, permission) {
-        const handler = handlers?.map?.(handler => handler?.bind(this)) ?? [handlers?.bind(this)]
+        const handler = handlers?.map?.(h => h?.bind(this)) ?? [handlers?.bind(this)]
         handler && this.router.delete(
             path,
             checkPermission(this.config, permission),

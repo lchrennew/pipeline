@@ -32,7 +32,11 @@ export default class PipelineController extends Controller {
     async execute(ctx) {
         const username = extractUsername(ctx)
         const { stages } = ctx.request.body
-        await this.eventStore.store({ type: EXECUTION_STARTED, creator: username, data: stages })
+        await this.eventStore.store({
+            type: EXECUTION_STARTED,
+            creator: username,
+            data: stages,
+        })
         ctx.status = 201
     }
 

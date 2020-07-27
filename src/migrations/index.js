@@ -6,15 +6,6 @@ import mongo from '../utils/mongo';
 
 const TABLE = 'migrations'
 
-const up = async () => {
-    const migrations = await loadMigrations()
-    const scripts = await loadScripts(migrations)
-
-    for (const { name, script: { up } } of scripts) {
-        await up()
-        await mongo(async db => await db.collection(TABLE).insertOne({ name }))
-    }
-}
 const loadMigrations = async () => {
     return (await mongo(async db => await db.collection(TABLE).find({}, { sort: { name: 1 } }), { asArray }))
 }
@@ -35,4 +26,15 @@ const loadScripts = async (migrations) => {
 }
 
 
-export default { up }
+export default {
+    up: async () => {
+        const migrations = await loadMigrations()
+        const scripts = await loadScripts(migrations)
+        const log = async name => await mongo(async db => await db.collection(TABLE).insertOne({ name }))
+
+        for (const { name, script: { up } } of scripts) {
+            await up()
+            await log(name)
+        }
+    }
+}

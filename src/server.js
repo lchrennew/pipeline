@@ -1,10 +1,11 @@
 // import crypto from 'crypto'
 import { EventEmitter } from 'events';
-import { up } from './migrations';
+import Koa from 'koa'
 import getApp from './app';
 import { createStores } from './createStores';
 import { addEventHook } from './events/eventHook';
 import { startMonitoring } from './metrics';
+import { up } from './migrations';
 import { createOptions } from './options';
 
 export AuthenticationRequired from './AuthenticationRequired';
@@ -25,11 +26,10 @@ async function createApp(options) {
         ...options,
     };
 
-    const app = getApp(config);
+    const app: Koa = getApp(config);
     startMonitoring(
         options.serverMetrics,
         eventBus,
-
     );
 
     if (typeof config.eventHook === 'function') {

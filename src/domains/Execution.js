@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb'
 import sift from 'sift'
 import { Progress } from './Execution.compositions';
+
 export default class Execution {
 
     static status = {
@@ -15,10 +16,6 @@ export default class Execution {
         ABORTING: 'aborting',
         ABORTED: 'aborted',
         PENDING: 'pending'
-    }
-    static events = {
-        INITIALIZED: 'initialized',
-        STARTED: 'started',
     }
 
     static nextStatusTransformations = {
@@ -83,7 +80,9 @@ export default class Execution {
     }
 
     #setNextStatus() {
-        const nextStatus = Execution.nextStatusTransformations[this.status](this)
+        console.log(this.status)
+
+        const nextStatus = Execution.nextStatusTransformations[this.status]?.(this)
         if (nextStatus)
             this.status = nextStatus
         return this
@@ -94,13 +93,19 @@ export default class Execution {
         return this
             .#setNextStatus()
             .#findNextStages()
-            .filter(stage => stage.start(this.variables))
+            .filter(stage => stage.start())
     }
 
     /**状态更新，返回新启动的阶段*/
     startPendingStages(): Progress[] {
         this.status = Execution.status.RUNNING
-        return this.stages.filter(stage => stage.confirm(this.variables))
+        return this.stages.filter(stage => stage.confirm())
+    }
+
+    stagePrepare(name): Progress {
+        const stage = this.#getStage(name)
+        stage.run(this.variables)
+        return stage
     }
 
     stopIfNoRunningStages() {
