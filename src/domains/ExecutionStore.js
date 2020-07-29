@@ -1,7 +1,7 @@
 import execa from 'execa'
 import { ObjectId } from 'mongodb'
 import { getApi, json, POST } from '../utils/fetch';
-import EventStore from './Event.store';
+import EventStore from './EventStore';
 import Execution from './Execution';
 import { Progress } from './Execution.compositions';
 import {
@@ -117,12 +117,6 @@ export default class ExecutionStore {
                         }) {
 
         await this.#createStageEnvironment(execution, name, type)
-        // let err = await this.#executeCommand(type, options, input)
-        // await this.eventStore.store({
-        //     type: err ? STAGE_FAILED : STAGE_SUCCEEDED,
-        //     creator,
-        //     data: { execution, stage: name, err }
-        // })
     }
 
     async #stagePrepared(name, execution: Execution) {
@@ -130,23 +124,6 @@ export default class ExecutionStore {
         await this.executionDb.update(execution)
         await this.queueApi(`publish/${execution._id}_${name}`, POST, json({ input, options }))
     }
-
-    // /**
-    //  * 实际执行
-    //  * @param type {String}
-    //  * @param options {Object}
-    //  * @param input {Object}
-    //  * */
-    // async #executeCommand(type, options, input) {
-    //     try {
-    //         this.logger.info(`准备执行命令：${options.shell}`)
-    //         const { stdout } = await execa(type, ['-c', options.shell], { env: input })
-    //         this.logger.info(`命令输出：${stdout}`)
-    //     } catch ({ command, exitCode, signal, signalDescription, stderr, failed, timedOut, isCanceled, killed }) {
-    //         this.logger.info(stderr)
-    //         return { command, exitCode, signal, signalDescription, stderr, failed, timedOut, isCanceled, killed }
-    //     }
-    // }
 
     /**
      * 当阶段成功时，更新执行状态并进入后续处理（比如等待所有正在执行的阶段完成后更新执行状态）

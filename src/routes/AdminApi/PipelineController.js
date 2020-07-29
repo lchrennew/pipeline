@@ -1,4 +1,4 @@
-import EventStore from '../../domains/Event.store';
+import EventStore from '../../domains/EventStore';
 import {
     EXECUTION_ABORTED,
     EXECUTION_CONFIRMED,

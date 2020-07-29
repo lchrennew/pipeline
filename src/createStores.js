@@ -1,7 +1,7 @@
-import EventStore from './domains/Event.store';
+import EventStore from './domains/EventStore';
 import ExecutionDb from './domains/ExecutionDb';
 import ExecutionStore from './domains/ExecutionStore';
-import SettingStore from './domains/Setting.store'
+import SettingStore from './domains/SettingStore'
 
 export function createStores(config, eventBus) {
     const { getLogger, queueServerUri, host, port, baseUriPath } = config;

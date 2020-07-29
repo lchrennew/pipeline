@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb'
-import EventStore from '../../domains/Event.store';
+import EventStore from '../../domains/EventStore';
 import { EXECUTION_TICKED, STAGE_FAILED, STAGE_PREPARED, STAGE_SUCCEEDED } from '../../domains/Execution.events';
 import ExecutionStore from '../../domains/ExecutionStore';
 import Controller from '../Controller';
@@ -22,7 +22,6 @@ export default class PipelineController extends Controller {
     executionStore: ExecutionStore
 
     async requireExecution(ctx, next) {
-        console.log('11')
         const { id } = ctx.params
         const execution = await this.executionStore.get(ObjectId(id))
         if (!execution) {
